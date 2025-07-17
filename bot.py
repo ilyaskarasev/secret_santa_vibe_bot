@@ -5,13 +5,15 @@ import aiosqlite
 import os
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.storage.memory import MemoryStorage
 
 BOT_TOKEN = '7847843904:AAHpT8Da-Von5TKMgucQfW8Q8UTKzKG5k8I'
 USER_PASSWORD = 'santa2024'
 ADMIN_PASSWORD = 'admin2024'
 
 bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
+storage = MemoryStorage()
+dp = Dispatcher(storage=storage)
 
 DB_PATH = 'santa.db'
 
