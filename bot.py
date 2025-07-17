@@ -1,6 +1,6 @@
 import asyncio
 from aiogram import Bot, Dispatcher, types
-from aiogram.filters import Command, Text
+from aiogram.filters import Command
 import aiosqlite
 import os
 from aiogram.fsm.context import FSMContext
