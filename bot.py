@@ -3,6 +3,8 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command, Text
 import aiosqlite
 import os
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 
 BOT_TOKEN = '7847843904:AAHpT8Da-Von5TKMgucQfW8Q8UTKzKG5k8I'
 USER_PASSWORD = 'santa2024'
@@ -22,12 +24,23 @@ async def init_db():
         )''')
         await db.commit()
 
-@dp.message(Command('start'))
-async def cmd_start(message: types.Message):
-    await message.answer('Привет! Введите пароль для регистрации:')
+class RegStates(StatesGroup):
+    waiting_for_password = State()
 
-@dp.message()
-async def handle_password(message: types.Message):
+@dp.message(Command('start'))
+async def cmd_start(message: types.Message, state: FSMContext):
+    user_id = message.from_user.id
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute('SELECT * FROM users WHERE user_id=?', (user_id,)) as cursor:
+            user = await cursor.fetchone()
+    if user:
+        await message.answer('Вы уже зарегистрированы!')
+        return
+    await message.answer('Привет! Введите пароль для регистрации:')
+    await state.set_state(RegStates.waiting_for_password)
+
+@dp.message(RegStates.waiting_for_password)
+async def handle_password(message: types.Message, state: FSMContext):
     text = message.text.strip()
     user_id = message.from_user.id
     username = message.from_user.username or message.from_user.full_name
@@ -36,17 +49,20 @@ async def handle_password(message: types.Message):
             user = await cursor.fetchone()
         if user:
             await message.answer('Вы уже зарегистрированы!')
+            await state.clear()
             return
         if text == USER_PASSWORD:
             await db.execute('INSERT INTO users (user_id, username, is_admin) VALUES (?, ?, 0)', (user_id, username))
             await db.commit()
             await message.answer('Вы успешно зарегистрированы как участник!')
+            await state.clear()
         elif text == ADMIN_PASSWORD:
             await db.execute('INSERT INTO users (user_id, username, is_admin) VALUES (?, ?, 1)', (user_id, username))
             await db.commit()
             await message.answer('Вы зарегистрированы как админ! Для запуска розыгрыша используйте команду /draw')
+            await state.clear()
         else:
-            await message.answer('Неверный пароль. Попробуйте снова.')
+            await message.answer('Неверный пароль. Попробуйте снова:')
 
 @dp.message(Command('draw'))
 async def cmd_draw(message: types.Message):
